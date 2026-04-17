@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ server.name }} - Ziad Host</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+</head>
+<body class="bg-[#050505] text-white font-sans">
+
+    <nav class="fixed top-0 left-0 right-0 z-50 bg-[#050505]/80 backdrop-blur-md border-b border-white/10">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <a href="/dashboard" class="text-xl font-bold tracking-tighter">← العودة</a>
+                <span class="text-sm">{{ server.name }}</span>
+                <button onclick="logout()" class="text-gray-400 hover:text-white">تسجيل خروج</button>
+            </div>
+        </div>
+    </nav>
+
+    <div class="pt-20 pb-12 px-4 max-w-7xl mx-auto">
+        <!-- Server Info -->
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+            <div class="p-6 bg-white/[0.02] border border-white/10 rounded-2xl">
+                <p class="text-sm text-gray-500">الحالة</p>
+                <p class="text-xl font-bold" id="serverStatus">{{ server.status }}</p>
+            </div>
+            <div class="p-6 bg-white/[0.02] border border-white/10 rounded-2xl">
+                <p class="text-sm text-gray-500">اللغة</p>
+                <p class="text-xl font-bold">{{ server.language }}</p>
+            </div>
+            <div class="p-6 bg-white/[0.02] border border-white/10 rounded-2xl">
+                <p class="text-sm text-gray-500">IP</p>
+                <p class="text-xl font-bold font-mono">{{ server.ip }}</p>
+            </div>
+            <div class="p-6 bg-white/[0.02] border border-white/10 rounded-2xl">
+                <p class="text-sm text-gray-500">الخطة</p>
+                <p class="text-xl font-bold">{{ 'مميزة' if server.plan == 'premium' else 'مجانية' }}</p>
+            </div>
+        </div>
+
+        <!-- Controls -->
+        <div class="flex gap-4 mb-8">
+            <button onclick="controlServer('start')" class="px-6 py-3 bg-green-600 hover:bg-green-500 rounded-xl font-bold">▶ تشغيل</button>
+            <button onclick="controlServer('restart')" class="px-6 py-3 bg-yellow-600 hover:bg-yellow-500 rounded-xl font-bold">🔄 إعادة تشغيل</button>
+            <button onclick="controlServer('stop')" class="px-6 py-3 bg-red-600 hover:bg-red-500 rounded-xl font-bold">⏹ إيقاف</button>
+        </div>
+
+        <!-- Console -->
+        <div class="bg-black/40 border border-white/10 rounded-2xl overflow-hidden">
+            <div class="bg-white/5 px-4 py-3 border-b border-white/10">
+                <span class="text-sm font-bold">الكونسول</span>
+            </div>
+            <div id="console" class="h-96 overflow-y-auto p-4 font-mono text-sm space-y-1 bg-black/20">
+                {% for log in logs %}
+                <div class="text-gray-400">{{ log }}</div>
+                {% else %}
+                <div class="text-gray-600">[SYSTEM] اضغط على تشغيل لبدء السيرفر</div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let serverId = '{{ server.id }}';
+        let logInterval = null;
+
+        async function logout() {
+            await fetch('/api/auth/logout', { method: 'POST' });
+            window.location.href = '/';
+        }
+
+        async function controlServer(action) {
+            let status = action === 'start' ? 'running' : (action === 'stop' ? 'stopped' : 'starting');
+            await fetch(`/api/servers/{{ server.id }}/status`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ status })
+            });
+            
+            if (action === 'start') {
+                startServer();
+            } else if (action === 'stop') {
+                await fetch('/api/stop', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ serverId })
+                });
+                stopLogs();
+            }
+            
+            document.getElementById('serverStatus').innerText = action === 'start' ? 'running' : (action === 'stop' ? 'stopped' : 'starting');
+        }
+
+        async function startServer() {
+            // Simulate starting - in real app you'd need file content
+            const res = await fetch('/api/execute', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    language: '{{ server.language }}',
+                    files: [],
+                    main: 'index.{{ "py" if server.language == "python" else "js" if server.language == "javascript" else "php" }}',
+                    serverId: serverId,
+                    ownerEmail: 'user@example.com'
+                })
+            });
+            startLogs();
+        }
+
+        function startLogs() {
+            if (logInterval) clearInterval(logInterval);
+            logInterval = setInterval(async () => {
+                const res = await fetch(`/api/logs/${serverId}`);
+                const data = await res.json();
+                const consoleDiv = document.getElementById('console');
+                consoleDiv.innerHTML = data.logs.map(log => `<div class="text-gray-400">${log}</div>`).join('');
+                consoleDiv.scrollTop = consoleDiv.scrollHeight;
+            }, 2000);
+        }
+
+        function stopLogs() {
+            if (logInterval) {
+                clearInterval(logInterval);
+                logInterval = null;
+            }
+        }
+
+        // Start logs if server is running
+        if ('{{ server.status }}' === 'running') startLogs();
+    </script>
+</body>
+</html>

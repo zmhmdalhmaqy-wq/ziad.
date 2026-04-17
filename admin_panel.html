@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>لوحة المشرف - Ziad Host</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-[#050505] text-white">
+
+    <nav class="fixed top-0 left-0 right-0 bg-[#050505]/80 backdrop-blur-md border-b border-white/10 px-4 py-3">
+        <div class="max-w-7xl mx-auto flex justify-between items-center">
+            <a href="/dashboard" class="text-xl font-bold">ZIAD HOST</a>
+            <button onclick="logout()" class="text-gray-400 hover:text-white">تسجيل خروج</button>
+        </div>
+    </nav>
+
+    <div class="pt-20 pb-12 px-4 max-w-7xl mx-auto">
+        <h1 class="text-3xl font-black mb-8">لوحة تحكم المشرف</h1>
+
+        <!-- Tabs -->
+        <div class="flex gap-2 mb-8 border-b border-white/10">
+            <button onclick="showTab('users')" id="tabUsers" class="px-6 py-3 text-sm font-bold border-b-2 border-blue-500">المستخدمين</button>
+            <button onclick="showTab('servers')" id="tabServers" class="px-6 py-3 text-sm font-bold text-gray-500">السيرفرات</button>
+            <button onclick="showTab('requests')" id="tabRequests" class="px-6 py-3 text-sm font-bold text-gray-500">طلبات الشحن</button>
+        </div>
+
+        <!-- Users Tab -->
+        <div id="usersTab">
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {% for user in users %}
+                <div class="p-4 bg-white/[0.02] border border-white/10 rounded-2xl">
+                    <p class="font-bold">{{ user.email }}</p>
+                    <p class="text-sm text-gray-500">الرصيد: {{ user.balance or 0 }} SYP</p>
+                    <div class="flex gap-2 mt-3">
+                        <input type="number" id="amount_{{ user.uid }}" placeholder="المبلغ" class="flex-1 px-2 py-1 bg-white/5 border border-white/10 rounded text-sm">
+                        <button onclick="updateBalance('{{ user.uid }}', 'add')" class="px-3 py-1 bg-green-600/20 text-green-500 rounded text-sm">+</button>
+                        <button onclick="updateBalance('{{ user.uid }}', 'sub')" class="px-3 py-1 bg-red-600/20 text-red-500 rounded text-sm">-</button>
+                        <button onclick="toggleBan('{{ user.uid }}', {{ 'true' if user.isBanned else 'false' }})" class="px-3 py-1 bg-yellow-600/20 text-yellow-500 rounded text-sm">
+                            {{ 'إلغاء الحظر' if user.isBanned else 'حظر' }}
+                        </button>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- Servers Tab (hidden) -->
+        <div id="serversTab" class="hidden">
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {% for server in servers %}
+                <div class="p-4 bg-white/[0.02] border border-white/10 rounded-2xl">
+                    <p class="font-bold">{{ server.name }}</p>
+                    <p class="text-sm text-gray-500">المالك: {{ server.ownerId[:20] }}...</p>
+                    <div class="flex gap-2 mt-3">
+                        <button onclick="controlServer('{{ server.id }}', 'start')" class="px-3 py-1 bg-green-600/20 text-green-500 rounded">تشغيل</button>
+                        <button onclick="controlServer('{{ server.id }}', 'stop')" class="px-3 py-1 bg-red-600/20 text-red-500 rounded">إيقاف</button>
+                        <button onclick="deleteServer('{{ server.id }}')" class="px-3 py-1 bg-red-600/20 text-red-500 rounded">حذف</button>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- Requests Tab (hidden) -->
+        <div id="requestsTab" class="hidden">
+            <div class="space-y-4">
+                {% for req in requests if req.status == 'pending' %}
+                <div class="p-4 bg-white/[0.02] border border-white/10 rounded-2xl flex justify-between items-center">
+                    <div>
+                        <p class="font-bold">{{ req.email }}</p>
+                        <p class="text-sm">المبلغ: {{ req.amount }} SYP</p>
+                        <p class="text-sm text-gray-500">تيليجرام: {{ req.telegram }}</p>
+                    </div>
+                    <div class="flex gap-2">
+                        <button onclick="approveRequest('{{ req.id }}', {{ req.amount }}, '{{ req.uid }}')" class="px-4 py-2 bg-green-600 rounded-lg">موافقة</button>
+                        <button onclick="rejectRequest('{{ req.id }}')" class="px-4 py-2 bg-red-600 rounded-lg">رفض</button>
+                    </div>
+                </div>
+                {% else %}
+                <div class="py-20 text-center text-gray-500">لا توجد طلبات معلقة</div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <script>
+        async function logout() {
+            await fetch('/api/auth/logout', { method: 'POST' });
+            window.location.href = '/';
+        }
+
+        function showTab(tab) {
+            document.getElementById('usersTab').classList.add('hidden');
+            document.getElementById('serversTab').classList.add('hidden');
+            document.getElementById('requestsTab').classList.add('hidden');
+            document.getElementById(`usersTab`).classList.add('hidden');
+            document.getElementById(`serversTab`).classList.add('hidden');
+            document.getElementById(`requestsTab`).classList.add('hidden');
+            
+            if (tab === 'users') {
+                document.getElementById('usersTab').classList.remove('hidden');
+                document.getElementById('tabUsers').className = 'px-6 py-3 text-sm font-bold border-b-2 border-blue-500';
+                document.getElementById('tabServers').className = 'px-6 py-3 text-sm font-bold text-gray-500';
+                document.getElementById('tabRequests').className = 'px-6 py-3 text-sm font-bold text-gray-500';
+            } else if (tab === 'servers') {
+                document.getElementById('serversTab').classList.remove('hidden');
+                document.getElementById('tabServers').className = 'px-6 py-3 text-sm font-bold border-b-2 border-blue-500';
+                document.getElementById('tabUsers').className = 'px-6 py-3 text-sm font-bold text-gray-500';
+                document.getElementById('tabRequests').className = 'px-6 py-3 text-sm font-bold text-gray-500';
+            } else {
+                document.getElementById('requestsTab').classList.remove('hidden');
+                document.getElementById('tabRequests').className = 'px-6 py-3 text-sm font-bold border-b-2 border-blue-500';
+                document.getElementById('tabUsers').className = 'px-6 py-3 text-sm font-bold text-gray-500';
+                document.getElementById('tabServers').className = 'px-6 py-3 text-sm font-bold text-gray-500';
+            }
+        }
+
+        async function updateBalance(uid, operation) {
+            const amountInput = document.getElementById(`amount_${uid}`);
+            const amount = parseInt(amountInput.value);
+            if (!amount) return;
+            
+            await fetch(`/api/admin/users/${uid}/balance`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ amount, operation })
+            });
+            location.reload();
+        }
+
+        async function toggleBan(uid, isBanned) {
+            await fetch(`/api/admin/users/${uid}/ban`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ isBanned: !isBanned })
+            });
+            location.reload();
+        }
+
+        async function controlServer(serverId, action) {
+            const status = action === 'start' ? 'running' : 'stopped';
+            await fetch(`/api/servers/${serverId}/status`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ status })
+            });
+            location.reload();
+        }
+
+        async function deleteServer(serverId) {
+            if (confirm('حذف السيرفر نهائياً؟')) {
+                await fetch(`/api/servers/${serverId}`, { method: 'DELETE' });
+                location.reload();
+            }
+        }
+
+        async function approveRequest(requestId, amount, uid) {
+            await fetch(`/api/admin/requests/${requestId}/approve`, { method: 'POST' });
+            location.reload();
+        }
+
+        async function rejectRequest(requestId) {
+            await fetch(`/api/admin/requests/${requestId}/reject`, { method: 'POST' });
+            location.reload();
+        }
+    </script>
+</body>
+</html>

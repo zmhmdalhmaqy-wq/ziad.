@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>شحن الرصيد - Ziad Host</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-[#050505] text-white">
+
+    <nav class="fixed top-0 left-0 right-0 bg-[#050505]/80 backdrop-blur-md border-b border-white/10 px-4 py-3">
+        <div class="max-w-7xl mx-auto flex justify-between items-center">
+            <a href="/dashboard" class="text-xl font-bold">← العودة</a>
+            <button onclick="logout()" class="text-gray-400 hover:text-white">تسجيل خروج</button>
+        </div>
+    </nav>
+
+    <div class="pt-24 pb-12 px-4 max-w-md mx-auto">
+        <div class="bg-[#0a0a0a] border border-white/10 rounded-3xl p-8">
+            <h1 class="text-3xl font-black mb-2 text-center">تعبئة الرصيد</h1>
+            <p class="text-gray-500 text-center mb-8">أدخل التفاصيل المطلوبة</p>
+
+            <!-- Payment Info -->
+            <div class="mb-6 p-4 bg-blue-600/10 border border-blue-600/30 rounded-2xl text-center">
+                <p class="text-sm text-gray-300 mb-2">للدفع، يرجى التحويل عبر MTN سورية إلى الرقم:</p>
+                <p class="text-xl font-mono font-bold text-blue-400">0912345678</p>
+                <p class="text-xs text-gray-500 mt-2">تواصل مع المطور: @RLH55 على تيليجرام</p>
+            </div>
+
+            <form onsubmit="submitRequest(event)">
+                <div class="mb-4">
+                    <input type="number" id="amount" required placeholder="المبلغ (SYP)" class="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white">
+                </div>
+                <div class="mb-4">
+                    <input type="text" id="transferNumber" required placeholder="رقم MTN الذي تم التحويل منه" class="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white">
+                </div>
+                <div class="mb-6">
+                    <input type="text" id="telegram" required placeholder="يوزر التلجرام" class="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white">
+                </div>
+                <button type="submit" class="w-full py-4 bg-blue-600 hover:bg-blue-500 rounded-xl font-bold transition shadow-lg shadow-blue-600/20">
+                    تقديم الطلب
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        async function logout() {
+            await fetch('/api/auth/logout', { method: 'POST' });
+            window.location.href = '/';
+        }
+
+        async function submitRequest(e) {
+            e.preventDefault();
+            const amount = document.getElementById('amount').value;
+            const transferNumber = document.getElementById('transferNumber').value;
+            const telegram = document.getElementById('telegram').value;
+
+            const res = await fetch('/api/recharge', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ amount, transferNumber, telegram })
+            });
+            const data = await res.json();
+            if (data.status === 'success') {
+                alert('تم تقديم الطلب بنجاح! سيتم مراجعته قريباً.');
+                window.location.href = '/dashboard';
+            } else {
+                alert('حدث خطأ، حاول مرة أخرى');
+            }
+        }
+    </script>
+</body>
+</html>

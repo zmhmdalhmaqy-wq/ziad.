@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>تسجيل الدخول - Ziad Host</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+</head>
+<body class="bg-[#020617] text-white font-sans">
+
+    <div class="min-h-screen flex items-center justify-center p-4">
+        <div class="max-w-md w-full bg-white/[0.02] border border-white/10 rounded-3xl p-8 backdrop-blur-3xl">
+            <div class="text-center mb-8">
+                <div class="w-16 h-16 bg-gradient-to-br from-blue-600 to-blue-800 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg shadow-blue-600/40">
+                    <span class="text-2xl font-black">Z</span>
+                </div>
+                <h2 class="text-3xl font-black tracking-tighter" id="formTitle">تسجيل الدخول</h2>
+                <p class="text-gray-400 text-sm mt-2" id="formToggle">
+                    ليس لديك حساب؟
+                    <button onclick="toggleForm()" class="text-blue-500 hover:underline">سجل الآن</button>
+                </p>
+            </div>
+
+            <div id="errorMsg" class="hidden bg-red-500/10 border border-red-500/20 p-3 rounded-xl text-red-400 text-sm mb-6"></div>
+
+            <form id="authForm" onsubmit="handleSubmit(event)">
+                <div id="nameField" class="hidden mb-4">
+                    <input type="text" id="displayName" placeholder="اسم المستخدم" class="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white outline-none focus:ring-2 focus:ring-blue-500 text-right">
+                </div>
+                <div class="mb-4">
+                    <input type="email" id="email" required placeholder="البريد الإلكتروني" class="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white outline-none focus:ring-2 focus:ring-blue-500 text-right">
+                </div>
+                <div class="mb-6">
+                    <input type="password" id="password" required placeholder="كلمة المرور" class="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white outline-none focus:ring-2 focus:ring-blue-500 text-right">
+                </div>
+                <button type="submit" class="w-full py-4 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-bold transition shadow-lg shadow-blue-600/20">
+                    دخول
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        let isLogin = true;
+
+        function toggleForm() {
+            isLogin = !isLogin;
+            const title = document.getElementById('formTitle');
+            const toggleText = document.getElementById('formToggle');
+            const nameField = document.getElementById('nameField');
+            const submitBtn = document.querySelector('#authForm button');
+
+            if (isLogin) {
+                title.innerText = 'تسجيل الدخول';
+                toggleText.innerHTML = 'ليس لديك حساب؟ <button onclick="toggleForm()" class="text-blue-500 hover:underline">سجل الآن</button>';
+                nameField.classList.add('hidden');
+                submitBtn.innerText = 'دخول';
+            } else {
+                title.innerText = 'إنشاء حساب';
+                toggleText.innerHTML = 'لديك حساب بالفعل؟ <button onclick="toggleForm()" class="text-blue-500 hover:underline">تسجيل الدخول</button>';
+                nameField.classList.remove('hidden');
+                submitBtn.innerText = 'إنشاء الحساب';
+            }
+        }
+
+        async function handleSubmit(e) {
+            e.preventDefault();
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            const displayName = document.getElementById('displayName')?.value || '';
+            const errorDiv = document.getElementById('errorMsg');
+
+            const endpoint = isLogin ? '/api/auth/login' : '/api/auth/register';
+            const body = isLogin ? { email, password } : { email, password, displayName };
+
+            try {
+                const res = await fetch(endpoint, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(body)
+                });
+                const data = await res.json();
+                if (data.status === 'success') {
+                    window.location.href = '/dashboard';
+                } else {
+                    errorDiv.innerText = data.message || 'حدث خطأ ما';
+                    errorDiv.classList.remove('hidden');
+                }
+            } catch (err) {
+                errorDiv.innerText = 'فشل الاتصال بالخادم';
+                errorDiv.classList.remove('hidden');
+            }
+        }
+    </script>
+</body>
+</html>
